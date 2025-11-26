@@ -1,0 +1,5 @@
+[build]
+cmd = "go build -o bin/main cmd/server/main.go"
+entrypoint = "./bin/main"
+bin = "./bin/main"
+
