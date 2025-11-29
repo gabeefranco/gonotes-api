@@ -9,17 +9,17 @@ import (
 	"github.com/go-chi/render"
 )
 
-type UsersHandler struct {
-	Service service.UsersService
+type AuthHandler struct {
+	Service service.AuthService
 }
 
-func NewUsersHandler(s service.UsersService) *UsersHandler {
-	return &UsersHandler{
+func NewAuthHandler(s service.AuthService) *AuthHandler {
+	return &AuthHandler{
 		Service: s,
 	}
 }
 
-func (h UsersHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
+func (h AuthHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -30,20 +30,12 @@ func (h UsersHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		render.JSON(w, r, render.M{
 			"error": "invalid request body",
 		})
-		return
 	}
 
-	user, err := h.Service.CreateUser(req.Email, req.Password)
-
+	token, err := h.Service.AuthenticateUser(req.Email, req.Password)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidEmail) || errors.Is(err, service.ErrPasswordTooShort) {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, render.M{
-				"error": err.Error(),
-			})
-			return
-		} else if errors.Is(err, service.ErrUserAlreadyExists) {
-			render.Status(r, http.StatusConflict)
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			render.Status(r, http.StatusUnauthorized)
 			render.JSON(w, r, render.M{
 				"error": err.Error(),
 			})
@@ -51,14 +43,15 @@ func (h UsersHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		} else {
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, render.M{
-				"error": "internal server error",
+				"error": err.Error(),
 			})
 			return
 		}
 	}
 
-	render.Status(r, http.StatusCreated)
+	render.Status(r, http.StatusOK)
 	render.JSON(w, r, render.M{
-		"user": user,
+		"token": token,
 	})
+
 }
